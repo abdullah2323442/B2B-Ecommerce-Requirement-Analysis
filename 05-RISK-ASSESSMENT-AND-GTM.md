@@ -40,7 +40,7 @@
 | **R-01** | Cold Start — Not enough sellers when launching, buyers find nothing | Business | High (3) | High (3) | 9 | Supply-first strategy: onboard 300+ sellers before public launch. Focus on 3 product categories initially (Textile, Electronics, FMCG). Run targeted Facebook ads to sellers. |
 | **R-02** | Low Engagement — Users register but never return | Business | High (3) | High (3) | 9 | In-app notifications and email to re-engage. Seller digest emails (weekly enquiry summary). Buyer RFQ match alerts. Quality onboarding flow to show value fast. |
 | **R-03** | Data Quality — Fake/duplicate listings degrade search results | Business | High (3) | Medium (2) | 6 | Admin moderation queue for every new product. Seller rating system surface quality. User flag/report feature. Automated duplicate text detection via MySQL FULLTEXT. |
-| **R-04** | Technical Failure — Server downtime during peak usage or traffic spike | Technical | Medium (2) | High (3) | 6 | Redis caching for high-traffic routes. Queue workers offload heavy tasks. Hostinger control panel monitoring + custom `/health` Laravel endpoint. Daily DB backup via cron. |
+| **R-04** | Technical Failure — Server downtime during peak usage or traffic spike | Technical | Medium (2) | High (3) | 6 | Laravel file caching and MySQL query optimisation for high-traffic routes. Queue workers offload heavy tasks. Hostinger control panel monitoring + custom `/health` Laravel endpoint. Daily DB backup via cron. |
 | **R-05** | Email OTP Delivery — Verification emails not delivered, users cannot complete login | Technical | Low (1) | High (3) | 3 | Use Hostinger’s built-in SMTP (reliable for transactional email). Implement retry logic in OtpService. Offer password-based login as fallback. Monitor email delivery via Hostinger mail logs. |
 | **R-06** | Seller Abandonment — Sellers list products but later leave for Facebook groups | Business | Medium (2) | High (3) | 6 | Provide clear value: lead management dashboard, CRM tools, verified badge, buyers can't access seller phone unless they enquire. Regular engagement emails with stats ("Your products got 200 views this week"). |
 | **R-07** | Content Scalability — Bengali language support issues (encoding, search) | Technical | Medium (2) | Medium (2) | 4 | MySQL utf8mb4 from Day 1. FULLTEXT search configured for Bengali. Thorough manual testing of Bengali input/search before launch. Phase 2: Meilisearch with Bengali stemmer. |
@@ -247,7 +247,7 @@
 |------|--------|
 | Products > 50,000 | Add Meilisearch server, enable full-text indexing |
 | Concurrent users > 500 | Upgrade Hostinger VPS to 8-core / 32GB RAM |
-| DB queries > 10ms avg | Add read replica MySQL, cache heavy queries in Redis |
+| DB queries > 10ms avg | Add read replica MySQL, optimise with MySQL indexes and Laravel file cache |
 | Queue jobs > 1000 pending | Add second queue worker server |
 | Traffic > 50,000 sessions/day | Enable Cloudflare CDN for all static assets, enable page caching |
 

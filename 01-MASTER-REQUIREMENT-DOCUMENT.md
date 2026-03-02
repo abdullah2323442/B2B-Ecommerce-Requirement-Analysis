@@ -295,9 +295,9 @@ The platform is **completely free** for all users — buyers and sellers alike. 
 | Concern | Approach |
 |---------|----------|
 | Database growth | Indexed foreign keys; query optimization from day one |
-| Caching | Redis for sessions, frequent queries, rate limiting |
+| Caching | Laravel file cache (built-in) for sessions and frequent queries |
 | Image processing | Compress and resize on upload via queue job |
-| Background work | Laravel Queue + Redis driver |
+| Background work | Laravel Queue + database driver (MySQL jobs table) |
 | File storage | Local disk (MVP) → cloud object storage when needed |
 
 ---
@@ -348,7 +348,7 @@ As admin, I want to broadcast announcements to all sellers or buyers.
 | Backend | PHP 8.3 / Laravel 11 |
 | Frontend | React 18 + Inertia.js + Tailwind CSS 3 |
 | Database | MySQL 8.0 |
-| Cache | Redis 7.x |
+| Cache | Laravel file cache (built-in, no extra service) |
 | Payment | None — fully free platform |
 
 ---

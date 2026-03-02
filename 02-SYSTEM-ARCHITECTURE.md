@@ -52,7 +52,7 @@
                         │  └───┬────────────┬────────────┬───┘    │
                         │      │            │            │         │
                         │  ┌───▼──┐  ┌─────▼──┐  ┌─────▼──────┐  │
-                        │  │MySQL │  │ Redis  │  │Local/Cloud │  │
+                        │  │MySQL │  │ File   │  │Local/Cloud │  │
                         │  │  DB  │  │(Cache) │  │  Storage   │  │
                         │  └──────┘  └────────┘  └────────────┘  │
                         └─────────────────────────────────────────┘
@@ -65,9 +65,9 @@
 | Architecture style | Monolithic (modular) | Small team, fast development, simple deployment |
 | Frontend approach | Inertia.js + React | Server-side routing with React components; no separate SPA build pipeline; SEO-friendly |
 | Database | MySQL 8.0 | Widely supported on Hostinger; team familiarity |
-| Cache | Redis | Session storage, cache, queue driver — single dependency |
+| Cache | Laravel file cache | Built-in, zero extra service, sufficient for MVP scale |
 | Search | MySQL FULLTEXT | Free, built-in, sufficient for initial scale |
-| Queue | Laravel Queue + Redis | Background jobs (email, image processing) |
+| Queue | Laravel Queue + database driver | Background jobs via MySQL jobs table (free, no extra service) |
 | File storage | Local disk → cloud later | Start simple, migrate when traffic warrants |
 
 ---
@@ -113,7 +113,7 @@
 | Web Server | Nginx | Reverse proxy, static files, SSL termination |
 | PHP Runtime | PHP-FPM | PHP process management |
 | Database | MySQL 8.0 | Primary data store |
-| Cache/Queue | Redis 7.x | Caching, sessions, queue driver |
+| Cache/Queue | Laravel file cache + DB queue | Built-in file-based caching; MySQL jobs table for queue |
 | SSL | Let's Encrypt (Certbot) | Free HTTPS certificate |
 | Hosting | Hostinger | VPS or Business Hosting |
 | OS | Ubuntu 22.04 LTS | Server operating system |
@@ -249,7 +249,7 @@ marketplace/
 │   OtpService | SearchService | NotificationService │
 ├─────────────────────────────────────────────────────────────────┤
 │                 Infrastructure Layer                             │
-│      MySQL | Redis | Local Storage | Queue | Cloudflare CDN     │
+│  MySQL | File Cache | Local Storage | DB Queue | Cloudflare CDN  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -276,7 +276,7 @@ Controller Action
       ├─── Service Layer (business logic)
       │        │
       │        ├─ MySQL (Eloquent ORM)
-      │        └─ Redis (cache)
+      │        └─ File Cache (Laravel built-in)
       │
       ▼
 Inertia::render('PageComponent', $props)
@@ -541,13 +541,12 @@ class Product extends Model
 
 ```php
 // config/cache.php
-'default' => 'redis',
+'default' => 'file',
 
 'stores' => [
-    'redis' => [
-        'driver'     => 'redis',
-        'connection' => 'cache',
-        'lock_connection' => 'default',
+    'file' => [
+        'driver' => 'file',
+        'path'   => storage_path('framework/cache/data'),
     ],
 ],
 ```
@@ -564,16 +563,15 @@ class Product extends Model
 | Site settings | `site:settings` | 24 hours | Settings update |
 | User session | Session driver | 2 hours | Logout |
 
-### 9.3 Redis Memory Estimate
+### 9.3 Cache Storage Estimate
 
-| Data Type | Estimated Size |
-|-----------|---------------|
-| Sessions (1K concurrent) | ~20 MB |
-| Cache keys (10K entries) | ~50 MB |
-| Queue jobs (pending) | ~10 MB |
-| **Total** | **~80 MB** |
+| Data Type | Storage |
+|-----------|--------|
+| File-cached pages and queries (10K entries) | ~50 MB disk |
+| Sessions (file driver, 1K concurrent) | ~10 MB disk |
+| **Total disk overhead** | **~60 MB** |
 
-Redis runs on the same server instance (MVP). Separate Redis server when RAM pressure requires it.
+No extra service required. All caching uses `storage/framework/cache/` on the same server.
 
 ---
 
@@ -583,12 +581,12 @@ Redis runs on the same server instance (MVP). Separate Redis server when RAM pre
 
 ```php
 // config/queue.php
-'default' => 'redis',
+'default' => 'database',
 
 'connections' => [
-    'redis' => [
-        'driver'      => 'redis',
-        'connection'  => 'queue',
+    'database' => [
+        'driver'      => 'database',
+        'table'       => 'jobs',
         'queue'       => 'default',
         'retry_after' => 90,
     ],
@@ -612,7 +610,7 @@ Redis runs on the same server instance (MVP). Separate Redis server when RAM pre
 ```ini
 [program:marketplace-worker]
 process_name=%(program_name)s_%(process_num)02d
-command=php /var/www/marketplace/artisan queue:work redis --sleep=3 --tries=3 --max-time=3600
+command=php /var/www/marketplace/artisan queue:work database --sleep=3 --tries=3 --max-time=3600
 autostart=true
 autorestart=true
 stopasgroup=true
@@ -710,7 +708,7 @@ Ubuntu 22.04 VPS
 │
 ├── MySQL 8.0 (primary database)
 │
-├── Redis 7.x (cache + sessions + queue)
+├── File cache (storage/framework/cache — built-in, no extra service)
 │
 ├── Supervisor
 │   ├── 2× Queue workers (notifications, media)
@@ -769,8 +767,6 @@ DB_DATABASE=marketplace_db
 DB_USERNAME=marketplace_user
 DB_PASSWORD=<strong-password>
 
-REDIS_HOST=127.0.0.1
-
 MAIL_MAILER=smtp
 MAIL_HOST=mail.hostinger.com
 MAIL_PORT=465
@@ -778,9 +774,9 @@ MAIL_USERNAME=noreply@marketplace.com.bd
 MAIL_PASSWORD=<hostinger-email-password>
 MAIL_ENCRYPTION=ssl
 
-QUEUE_CONNECTION=redis
-CACHE_DRIVER=redis
-SESSION_DRIVER=redis
+QUEUE_CONNECTION=database
+CACHE_DRIVER=file
+SESSION_DRIVER=file
 
 GOOGLE_CLIENT_ID=<id>
 GOOGLE_CLIENT_SECRET=<secret>
